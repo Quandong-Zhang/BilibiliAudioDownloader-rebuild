@@ -5,6 +5,7 @@ import time
 import eyed3
 import requests
 import colorama
+from time import sleep
 from colorama import Fore, Back, Style
 from eyed3.id3.frames import ImageFrame
 
@@ -51,12 +52,24 @@ def toAid(x):
     return (r - ADD) ^ XOR
 
 def toBvid(x):
-    x = (x ^ XOR) + ADD
-    r = list('BV1  4 1 7  ')
-    for i in range(6):
-        r[s[i]] = table[x // 58 ** i % 58]
-    return ''. join(r)
+	x=(x^XOR)+ADD
+	r=list('BV1  4 1 7  ')
+	for i in range(6):
+		r[s[i]]=table[x//58**i%58]
+	return ''.join(r)
 ###bilibili aid and bvid convert model end###
+
+def toLrcTime(time):
+    m, s = divmod(time, 60)
+    h, m = divmod(m, 60)
+    return "%02d:%02d.%02d" % (m, s, h)
+
+def manage_bili_json_to_lrc(json_str):
+    json_str = json.loads(json_str)["body"]
+    lrc = ""
+    for i in json_str:
+        lrc += "[" + str(toLrcTime(i["from"])) + "]" + i["content"] + "\n"
+    return lrc
 
 def chackFFMPEG():
     if os.system("ffmpeg -version") != 0:
@@ -100,9 +113,14 @@ def getUntillSuccess(URL, Headers):
         while True:
             try:
                 res = requests.get(URL, headers=Headers).text
+                try:
+                    json.loads(res)["code"]
+                except:
+                    return res
                 if json.loads(res)["code"] == 0:
                     return res
                 else:
+                    print(Back.RED + "Error: ", res)
                     sleep(GLOBE_SLEEP_TIME)
             except Exception as e:
                 print(Back.RED + "Error: ", "网络错误，检查网络环境","\n",e)
@@ -115,15 +133,21 @@ def downloadAudio(URL,Headers,local_filename):
     with open(local_filename, 'wb') as f:
         f.write(response.content)
 
-def rename(file_path, cidArry ,res):
+def rename(file_path, cidArry ,res , globe_title, title,cidList):
     mkdir("img_cache")
     if not os.path.exists("./img_cache/"+str(res["data"]["aid"])+"_cover.jpg"):
         downloadAudio(res["data"]["pic"], Headers, "./img_cache/"+str(res["data"]["aid"])+"_cover.jpg")
+    sub_lrc = manage_bili_json_to_lrc(getUntillSuccess("https:" + cidArry["BAD_sub_url"], Headers))
+    with open("./"+globe_title + "/" + getPathTitle(title) +".lrc", "w", encoding="utf-8") as f:
+        f.write(sub_lrc)
     audiofile = eyed3.load(file_path)
     tupTime=time.localtime(res["data"]["ctime"])#以实际做后更改时间为准，不是pubdate
     dateToTag=time.strftime("%Y-%m-%d", tupTime)
     audiofile.tag.release_date = dateToTag
-    audiofile.tag.title = res["data"]["title"]
+    if cidArry["part"] == "" or len(cidList) == 1:
+        audiofile.tag.title = res["data"]["title"]
+    else:
+        audiofile.tag.title =cidArry["part"] + res["data"]["title"]
     audiofile.tag.artist = res["data"]["owner"]["name"]+" - "+str(res["data"]["owner"]["mid"])
     audiofile.tag.album = res["data"]["bvid"]
     audiofile.tag.images.set(ImageFrame.FRONT_COVER, open('./img_cache/'+str(res["data"]["aid"])+'_cover.jpg','rb').read(), 'image/jpeg')
@@ -137,19 +161,24 @@ def main(URL):
         aid = toAid(bvid)
     else:
         aid = re.search(r'/av(\d+)/*', URL , re.IGNORECASE).group(1)
-        bvid=toBvid(aid)
+        #bvid=toBvid(aid)
     print(Back.GREEN + "Info: ", "aid is : ", aid)
     res=json.loads(getUntillSuccess("https://api.bilibili.com/x/web-interface/view?aid={aid}".format(aid=aid), Headers))
     cidList = res["data"]["pages"]
     globe_title = res["data"]["title"]
     globe_title=getPathTitle(globe_title)
     mkdir(globe_title)
-    for cidArry in cidList:
+    for idx,cidArry in enumerate(cidList):
         cid=cidArry["cid"]
         title=cidArry["part"]
         video_api_link="https://api.bilibili.com/x/player/playurl?avid={avid}&cid={cid}&fnval=80"
-        audio_url=json.loads(getUntillSuccess(video_api_link.format(avid=aid,cid=cid), Headers))["data"]["dash"]["audio"][-1]["baseUrl"]
+        video_resp_txt = getUntillSuccess(video_api_link.format(avid=aid,cid=cid), Headers)
+        video_resp_obj=json.loads(video_resp_txt)
+        audio_url=video_resp_obj["data"]["dash"]["audio"][-1]["baseUrl"]
         # 质量控制见上一行
+        cidArry["BAD_sub_url"]=json.loads(getUntillSuccess("https://api.bilibili.com/x/player/v2?aid={aid}&cid={cid}".format(aid=aid,cid=cid),Headers))["data"]["subtitle"]["subtitles"][0]["subtitle_url"]
+        if title == "":
+            title = res["data"]["title"]+" -p" + str(idx+1)      
         print(Back.GREEN + "Info: ", "Downloading: ", title)
         downloadAudio(audio_url, Headers, "./"+globe_title + "/" + getPathTitle(title) + ".m4a")
         print(Back.GREEN + "Info: ", "Downloaded: ", title)
@@ -159,8 +188,9 @@ def main(URL):
                 os.remove("./"+globe_title + "/" + getPathTitle(title) + ".m4a")
             except:
                 pass
-        rename("./"+globe_title + "/" + getPathTitle(title) + ".mp3",cidArry,res)
+        rename("./"+globe_title + "/" + getPathTitle(title) + ".mp3",cidArry,res,globe_title,title,cidList)
 
 if __name__ == "__main__":
     chackFFMPEG()
-    main(input("video url:"))
+    #main(input("video url:"))
+    main("https://www.bilibili.com/video/av106")
