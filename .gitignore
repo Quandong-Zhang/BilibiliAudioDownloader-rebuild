@@ -153,3 +153,4 @@ cython_debug/
 *.lrc
 *.mp3
 *.jpg
+#icon.ico
