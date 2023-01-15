@@ -192,5 +192,5 @@ def main(URL):
 
 if __name__ == "__main__":
     chackFFMPEG()
-    #main(input("video url:"))
-    main("https://www.bilibili.com/video/av106")
+    main(input("video url:"))
+    #main("https://www.bilibili.com/video/av106")
