@@ -137,9 +137,10 @@ def rename(file_path, cidArry ,res , globe_title, title,cidList):
     mkdir("img_cache")
     if not os.path.exists("./img_cache/"+str(res["data"]["aid"])+"_cover.jpg"):
         downloadAudio(res["data"]["pic"], Headers, "./img_cache/"+str(res["data"]["aid"])+"_cover.jpg")
-    sub_lrc = manage_bili_json_to_lrc(getUntillSuccess("https:" + cidArry["BAD_sub_url"], Headers))
-    with open("./"+globe_title + "/" + getPathTitle(title) +".lrc", "w", encoding="utf-8") as f:
-        f.write(sub_lrc)
+    if cidArry["BAD_sub_avilable"]:
+        sub_lrc = manage_bili_json_to_lrc(getUntillSuccess("https:" + cidArry["BAD_sub_url"], Headers))
+        with open("./"+globe_title + "/" + getPathTitle(title) +".lrc", "w", encoding="utf-8") as f:
+            f.write(sub_lrc)
     audiofile = eyed3.load(file_path)
     tupTime=time.localtime(res["data"]["ctime"])#以实际做后更改时间为准，不是pubdate
     dateToTag=time.strftime("%Y-%m-%d", tupTime)
@@ -176,7 +177,12 @@ def main(URL):
         video_resp_obj=json.loads(video_resp_txt)
         audio_url=video_resp_obj["data"]["dash"]["audio"][-1]["baseUrl"]
         # 质量控制见上一行
-        cidArry["BAD_sub_url"]=json.loads(getUntillSuccess("https://api.bilibili.com/x/player/v2?aid={aid}&cid={cid}".format(aid=aid,cid=cid),Headers))["data"]["subtitle"]["subtitles"][0]["subtitle_url"]
+        try:
+            cidArry["BAD_sub_url"]=json.loads(getUntillSuccess("https://api.bilibili.com/x/player/v2?aid={aid}&cid={cid}".format(aid=aid,cid=cid),Headers))["data"]["subtitle"]["subtitles"][0]["subtitle_url"]
+            cidArry["BAD_sub_avilable"]=True
+        except (KeyError,IndexError):
+            cidArry["BAD_sub_url"]=""
+            cidArry["BAD_sub_avilable"]=False
         if title == "":
             title = res["data"]["title"]+" -p" + str(idx+1)      
         print(Back.GREEN + "Info: ", "Downloading: ", title)

@@ -154,3 +154,4 @@ cython_debug/
 *.mp3
 *.jpg
 #icon.ico
+ffmpeg.exe
