@@ -1,5 +1,6 @@
 import os
 import re
+import hashlib
 import json
 import time
 import eyed3
@@ -49,7 +50,13 @@ def toAid(x):
     r = 0
     for i in range(6):
         r += tr[x[s[i]]] * 58 ** i
-    return (r - ADD) ^ XOR
+    aid_tmp = (r - ADD) ^ XOR
+    if aid_tmp > 0:
+        return aid_tmp
+    else:
+        aid_plain = getUntillSuccess("https://api.bilibili.com/x/web-interface/view?bvid=" + x ,Headers=Headers)
+        json_aid = json.loads(aid_plain)
+        return json_aid["data"]["aid"]
 
 def toBvid(x):
 	x=(x^XOR)+ADD
@@ -135,8 +142,12 @@ def downloadAudio(URL,Headers,local_filename):
 
 def rename(file_path, cidArry ,res , globe_title, title,cidList):
     mkdir("img_cache")
-    if not os.path.exists("./img_cache/"+str(res["data"]["aid"])+"_cover.jpg"):
-        downloadAudio(res["data"]["pic"], Headers, "./img_cache/"+str(res["data"]["aid"])+"_cover.jpg")
+    
+    res_img_head_only = requests.head(res["data"]["pic"])
+    head_dict = res_img_head_only.headers
+    img_md5 = head_dict["ETag"]
+    if not os.path.exists("./img_cache/"+str(img_md5)+".jpg"):
+        downloadAudio(res["data"]["pic"], Headers, "./img_cache/"+str(img_md5)+".jpg")
     if cidArry["BAD_sub_avilable"]:
         sub_lrc = manage_bili_json_to_lrc(getUntillSuccess("https:" + cidArry["BAD_sub_url"], Headers))
         with open("./"+globe_title + "/" + getPathTitle(title) +".lrc", "w", encoding="utf-8") as f:
@@ -151,7 +162,7 @@ def rename(file_path, cidArry ,res , globe_title, title,cidList):
         audiofile.tag.title =cidArry["part"] + res["data"]["title"]
     audiofile.tag.artist = res["data"]["owner"]["name"]+" - "+str(res["data"]["owner"]["mid"])
     audiofile.tag.album = res["data"]["bvid"]
-    audiofile.tag.images.set(ImageFrame.FRONT_COVER, open('./img_cache/'+str(res["data"]["aid"])+'_cover.jpg','rb').read(), 'image/jpeg')
+    audiofile.tag.images.set(ImageFrame.FRONT_COVER, open('./img_cache/'+str(img_md5)+'.jpg','rb').read(), 'image/jpeg')
     audiofile.tag.save(version=eyed3.id3.ID3_DEFAULT_VERSION, encoding='utf-8')
     print(Back.GREEN +"写入metadata成功" ,res['data']["title"],"\n"*2)
 
