@@ -1,1 +1,1 @@
-pyinstaller -F -i ./icon.ico main.py
+pyinstaller -F -i ./icon.ico cl_bd.py
