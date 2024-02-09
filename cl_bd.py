@@ -2,6 +2,7 @@ import clipboard
 import dl_mode
 import re
 import threading
+import time
 
 def check_clipboard():
     previous_content = clipboard.paste()
@@ -13,6 +14,7 @@ def check_clipboard():
             dw(current_content)  # 调用dw函数
             
         previous_content = current_content
+        time.sleep(.5)
 
 # 在这里定义dw函数
 def dw(content):
