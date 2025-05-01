@@ -15,3 +15,6 @@ bilibiliAudioDownloader的功能是根据B站的视频URL下载一个视频所�
 ![二维码](./MD/QRcode.png)
 
 # Enjoy it! ( •̀ ω •́ )✧
+
+# 2025/5/1 Update
+近期有用面向对象重写的计划。
