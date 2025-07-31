@@ -20,4 +20,4 @@ bilibiliAudioDownloader的功能是根据B站的视频URL下载一个视频所�
 近期有用面向对象重写的计划。
 
 # 2025/7/10 Update
-用c++面向对象重构，会发在一个新项目里，链接等下更新。
+用python面向对象重构，详见oop-rebuild分支。
